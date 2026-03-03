@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>netstandard2.1;netstandard2.0;net8.0;net9.0</TargetFrameworks>
+        <Nullable>enable</Nullable>
+        <LangVersion>latest</LangVersion>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <Description>Support for syslog over UDP/TCP to Better Stack</Description>
+        <Authors>Nicholas Brostrom (Nickztar)</Authors>
+        <Company>Effectsoft AB</Company>
+        <VersionPrefix>2.1.0</VersionPrefix>
+        <AssemblyName>Serilog.Sinks.BetterstackSyslog</AssemblyName>
+        <RootNamespace>Serilog.Sinks.BetterStackSyslog</RootNamespace>
+        <PackageId>Serilog.Sinks.BetterstackSyslog</PackageId>
+        <PackageTags>serilog;syslog;logging;logtail;betterstack</PackageTags>
+        <PackageIcon>icon.png</PackageIcon>
+        <PackageProjectUrl>https://github.com/Nickztar/Serilog.Sinks.BetterstackSyslog</PackageProjectUrl>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageLicenceUrl>https://github.com/Nickztar/Serilog.Sinks.BetterstackSyslog/blob/master/LICENCE</PackageLicenceUrl>
+        <RepositoryType>git</RepositoryType>
+        <GenerateAssemblyVersionAttribute>false</GenerateAssemblyVersionAttribute>
+        <IsPackable>true</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Serilog" Version="4.2.0" />
+        <PackageReference Include="Serilog.Sinks.PeriodicBatching" Version="5.0.0" />
+        <PackageReference Include="Serilog.Sinks.SyslogMessages" Version="4.1.0" />
+    </ItemGroup>
+    
+      <ItemGroup>
+        <None Include="icon.png" Pack="true" PackagePath="" />
+        <None Include="../README.md" Pack="true" PackagePath="\" />
+      </ItemGroup>
+</Project>
