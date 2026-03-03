@@ -17,7 +17,7 @@ namespace Serilog
     /// <summary>
     /// Extends Serilog configuration to write events to a logtail
     /// </summary>
-    public static class LogtailLoggerConfigurationExtensions
+    public static class BetterstackLoggerConfigurationExtensions
     {
         private static readonly PeriodicBatchingSinkOptions DefaultBatchOptions = new()
         {

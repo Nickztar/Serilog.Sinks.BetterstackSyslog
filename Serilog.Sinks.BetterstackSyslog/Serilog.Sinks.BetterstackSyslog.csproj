@@ -8,7 +8,7 @@
         <Description>Support for syslog over UDP/TCP to Better Stack</Description>
         <Authors>Nicholas Brostrom (Nickztar)</Authors>
         <Company>Effectsoft AB</Company>
-        <VersionPrefix>2.1.0</VersionPrefix>
+        <VersionPrefix>0.0.1</VersionPrefix>
         <AssemblyName>Serilog.Sinks.BetterstackSyslog</AssemblyName>
         <RootNamespace>Serilog.Sinks.BetterStackSyslog</RootNamespace>
         <PackageId>Serilog.Sinks.BetterstackSyslog</PackageId>
