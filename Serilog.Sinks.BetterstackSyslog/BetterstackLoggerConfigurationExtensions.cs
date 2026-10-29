@@ -1,7 +1,5 @@
 using System;
-using System.Linq;
-using System.Net;
-using System.Net.Sockets;
+using System.Threading;
 using Serilog.Configuration;
 using Serilog.Core;
 using Serilog.Events;
@@ -45,6 +43,8 @@ namespace Serilog
         /// <param name="sourceHost"><inheritdoc cref="BetterstackFormatterBase.Host" path="/summary"/></param>
         /// <param name="severityMapping">Provide your own method to override the default mapping logic of a Serilog <see cref="LogEventLevel"/></param>
         /// <param name="formatter">The message formatter</param>
+        /// <param name="dnsTtl">How long a resolved IP for <paramref name="host"/> is used before resolving again. UDP gives no error when the
+        /// ingestion host moves, so without this logs are silently lost. Defaults to 1 minute, <see cref="Timeout.InfiniteTimeSpan"/> resolves only once.</param>
         /// <see href="https://github.com/serilog/serilog/wiki/Formatting-Output"/>
         public static LoggerConfiguration BetterstackUdp(
             this LoggerSinkConfiguration loggerSinkConfig,
@@ -62,16 +62,16 @@ namespace Serilog
             string messageIdPropertyName = BetterstackFormatter.DefaultMessageIdPropertyName,
             string? sourceHost = null,
             Func<LogEventLevel, Severity>? severityMapping = null, 
-            ITextFormatter? formatter = null)
+            ITextFormatter? formatter = null,
+            TimeSpan? dnsTtl = null)
         {
             if (string.IsNullOrWhiteSpace(host))
                 throw new ArgumentException(nameof(host));
 
             batchConfig ??= DefaultBatchOptions;
             var messageFormatter = GetFormatter(tokenKey, token, dataName, appName, facility, outputTemplate, messageIdPropertyName, sourceHost, severityMapping, formatter);
-            var endpoint = ResolveIP(host, port);
 
-            var udpSink = new SyslogUdpSink(endpoint, messageFormatter);
+            var udpSink = new ResolvingSyslogUdpSink(host, port, messageFormatter, dnsTtl ?? TimeSpan.FromMinutes(1));
             var sink = new PeriodicBatchingSink(udpSink, batchConfig);
             return loggerSinkConfig.Sink(sink, restrictedToMinimumLevel, levelSwitch);
         }
@@ -180,14 +180,6 @@ namespace Serilog
                 sourceHost,
                 severityMapping
             );
-        }
-
-        private static IPEndPoint ResolveIP(string host, int port)
-        {
-            var addr = Dns.GetHostAddresses(host)
-                .First(x => x.AddressFamily is AddressFamily.InterNetwork or AddressFamily.InterNetworkV6);
-            
-            return new IPEndPoint(addr, port);
         }
     }
 }
