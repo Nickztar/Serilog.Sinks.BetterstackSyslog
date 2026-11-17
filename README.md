@@ -49,6 +49,8 @@ var log = new LoggerConfiguration()
 
 Better Stack's ingestion hosts rotate between IPs, and UDP gives no error when sending to one that is gone, so logs would be silently lost.
 The UDP sink therefore re-resolves the host after `dnsTtl` (default 1 minute) and only switches IP when the current one is no longer returned.
+IPv4 addresses are preferred, IPv6 is only used when the host has no IPv4 address, since some environments (e.g. Azure Container Apps) have no IPv6 egress.
+If a send fails, the host is re-resolved before the retry and another address is tried.
 
 ```csharp
 .WriteTo.BetterstackUdp(host: "<YOUR_INGESTION_HOST>", port: 6517, token: "<SOURCE_TOKEN>", dnsTtl: TimeSpan.FromMinutes(5))

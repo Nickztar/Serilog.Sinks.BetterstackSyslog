@@ -30,4 +30,29 @@ public class UdpSinkTests
         Encoding.UTF8.GetString(first.Buffer).Should().Contain("first");
         Encoding.UTF8.GetString(second.Buffer).Should().Contain("second");
     }
+
+    private static readonly IPAddress V4 = IPAddress.Parse("195.63.225.127");
+    private static readonly IPAddress OtherV4 = IPAddress.Parse("195.63.225.128");
+    private static readonly IPAddress V6 = IPAddress.Parse("2a0f:1b80:0:51::d6");
+
+    [Fact]
+    public void PrefersIpv4()
+    {
+        ResolvingSyslogUdpSink.Pick([V6, V4], null, keepCurrent: true).Should().Be(V4);
+        ResolvingSyslogUdpSink.Pick([V6], null, keepCurrent: true).Should().Be(V6);
+    }
+
+    [Fact]
+    public void MovesOffIpv6WhenIpv4Available()
+    {
+        ResolvingSyslogUdpSink.Pick([V6, V4], V6, keepCurrent: true).Should().Be(V4);
+    }
+
+    [Fact]
+    public void StaysOnCurrentIpv4UnlessSendFailed()
+    {
+        ResolvingSyslogUdpSink.Pick([OtherV4, V4], V4, keepCurrent: true).Should().Be(V4);
+        ResolvingSyslogUdpSink.Pick([V4, OtherV4], V4, keepCurrent: false).Should().Be(OtherV4);
+        ResolvingSyslogUdpSink.Pick([V4], V4, keepCurrent: false).Should().Be(V4);
+    }
 }

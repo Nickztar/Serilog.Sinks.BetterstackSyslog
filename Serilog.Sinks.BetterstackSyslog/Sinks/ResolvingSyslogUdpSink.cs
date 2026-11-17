@@ -22,6 +22,7 @@ internal sealed class ResolvingSyslogUdpSink(string host, int port, ISyslogForma
     private IPEndPoint? endpoint;
     private SyslogUdpSink? sink;
     private DateTime resolvedAt;
+    private bool sendFailed;
 
     public async Task EmitBatchAsync(IEnumerable<LogEvent> batch)
     {
@@ -29,7 +30,7 @@ internal sealed class ResolvingSyslogUdpSink(string host, int port, ISyslogForma
         if (sink is null)
         {
             // Throwing here lets PeriodicBatchingSink keep the batch and retry with backoff.
-            endpoint = new IPEndPoint((await Lookup(host))[0], port);
+            endpoint = new IPEndPoint(Pick(await Lookup(host), null, keepCurrent: false), port);
             sink = new SyslogUdpSink(endpoint, formatter);
             resolvedAt = DateTime.UtcNow;
         }
@@ -37,7 +38,17 @@ internal sealed class ResolvingSyslogUdpSink(string host, int port, ISyslogForma
         {
             await Refresh();
         }
-        await sink.EmitBatchAsync(batch);
+        try
+        {
+            await sink.EmitBatchAsync(batch);
+        }
+        catch (SocketException)
+        {
+            // Re-resolve before the retry and move off this address instead of retrying it forever.
+            sendFailed = true;
+            resolvedAt = DateTime.MinValue;
+            throw;
+        }
     }
 
     public Task OnEmptyBatchAsync() => Task.CompletedTask;
@@ -52,6 +63,24 @@ internal sealed class ResolvingSyslogUdpSink(string host, int port, ISyslogForma
             .ToArray();
 
         return addresses.Length > 0 ? addresses : throw new SocketException((int)SocketError.HostNotFound);
+    }
+
+    /// <summary>
+    /// Picks IPv4 when the host has any (IPv6 only as fallback), since hosts like Azure Container Apps
+    /// have no IPv6 egress and UDP to an unreachable address fails silently.
+    /// </summary>
+    internal static IPAddress Pick(IPAddress[] addresses, IPAddress? current, bool keepCurrent)
+    {
+        var preferred = addresses.Where(x => x.AddressFamily == AddressFamily.InterNetwork).ToArray();
+        if (preferred.Length == 0)
+            preferred = addresses;
+
+        // Pools return the same IPs in rotating order, so stay on ours while it is still a preferred pick
+        // rather than flapping every TTL. After a send failure, move to another one if there is any.
+        if (current is not null && preferred.Contains(current))
+            return keepCurrent ? current : preferred.FirstOrDefault(x => !x.Equals(current)) ?? current;
+
+        return preferred[0];
     }
 
     private async Task Refresh()
@@ -70,12 +99,13 @@ internal sealed class ResolvingSyslogUdpSink(string host, int port, ISyslogForma
             return;
         }
 
-        // Pools return the same IPs in rotating order, only move when ours is gone.
-        if (addresses.Contains(current))
+        var next = Pick(addresses, current, keepCurrent: !sendFailed);
+        sendFailed = false;
+        if (next.Equals(current))
             return;
 
         var old = sink;
-        endpoint = new IPEndPoint(addresses[0], port);
+        endpoint = new IPEndPoint(next, port);
         sink = new SyslogUdpSink(endpoint, formatter);
         old?.Dispose();
     }
